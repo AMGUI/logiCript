@@ -1,0 +1,211 @@
+#Include 'Protheus.ch'
+
+User Function PCFINA01()
+	Private cPerg := PADR("PCFINA01",len(SX1->X1_GRUPO))
+ 
+	CriaSx1(cPerg)
+	If Pergunte(cPerg,.T.)
+		fPrincipal()
+	Else
+		Return Nil
+	Endif
+Return
+
+Static Function CriaSx1(cPerg)
+	PutSx1(cPerg,"01","Do Prefixo?", "Do Prefixo?" ,"Do Prefixo?",				"mv_ch0","C",15,0,0,"G","","","","","mv_par01")
+	PutSx1(cPerg,"02","At? o Prefixo?", "At? o Prefixo?","At? o Prefixo?",	"mv_ch1","C",15,0,0,"G","","","","","mv_par02")
+	PutSx1(cPerg,"03","Do N?mero?", "Do N?mero?"	,"Do N?mero?",				"mv_ch2","C",15,0,0,"G","","","","","mv_par03")
+	PutSx1(cPerg,"04","At? o N?mero?", "At? o N?mero?","At? o N?mero?",		"mv_ch3","C",15,0,0,"G","","","","","mv_par04")
+	PutSx1(cPerg,"05","Da Parcela?", "Da Parcela?","Da Parcela?",				"mv_ch4","C",15,0,0,"G","","","","","mv_par05")
+	PutSx1(cPerg,"06","At? a Parcela?", "At? a Parcela?","At? a Parcela?",	"mv_ch5","C",15,0,0,"G","","","","","mv_par06")
+	PutSx1(cPerg,"07","Da Emiss?o?", "Da Emiss?o?","Da Emiss?o?",				"mv_ch6","D",15,0,0,"G","","","","","mv_par07")
+	PutSx1(cPerg,"08","At? a Emiss?o?", "At? a Emiss?o?","At? a Emiss?o?",	"mv_ch7","D",15,0,0,"G","","","","","mv_par08")
+	PutSx1(cPerg,"09","Do Cliente?", "Do Cliente?","Do Cliente?",				"mv_ch8","C",15,0,0,"G","","","","","mv_par09")
+	PutSx1(cPerg,"10","At? o Cliente?", "At? o Cliente?","At? o Cliente?",	"mv_ch9","C",15,0,0,"G","","","","","mv_par10")
+Return
+
+Static Function fPrincipal()
+	// ------------------------------
+	// Tabelas utilizadas (`Clientes` e `Contas a Receber`)
+	// ------------------------------
+	Static cPfxCli		:= "A1"
+	Static cPfxContas		:= "E1"
+	Static cAliasCli		:= "S"+cPfxCli
+	Static cAliasContas	:= "S"+cPfxContas
+	// ------------------------------
+	Public aDados	:= {}
+
+	aDados := fDbSearch()
+
+	If !Empty(aDados) //Se o retorno n?o foi vazio:*/
+		fMontaTela()
+	Else
+		Aviso("Nada encontrado.", "Nenhum registro encontrado com os par?metros especificados." +;
+			" N?o ser? poss?vel gerar relat?rio", {"Fechar"}, 2)
+	Endif
+Return
+
+/*/{Protheus.doc} fDbSearch
+Executa a busca no banco de dados por registros de t?tulos de acordo com os par?metros informados.
+@author Everson Dantas - everson.dantas@totvs.com.br
+@since 21/08/2015
+@version 1.0
+@return aRet, Array contendo o resultado da busca.
+/*/
+Static Function fDbSearch()
+	Local cQry			:= ""
+	Local nI := 0
+	Local aRet	:= {}, aAux
+	
+	// Monta a consulta
+	cQry += "SELECT * "
+	cQry += "FROM " + RetSQLName(cAliasContas) + " AS SE1 INNER JOIN " + RetSQLName(cAliasCli) + " AS SA1 "
+	cQry += "ON " + cPfxContas + "_CLIENTE = " + cPfxCli + "_COD AND " + cPfxContas + "_LOJA = " + cPfxCli + "_LOJA "
+	cQry += "WHERE " + cPfxContas + "_ORIGEM = 'FINA040' "
+	
+	If ( !(Empty(AllTrim(mv_par01))) .Or. !(Empty(AllTrim(mv_par02))) )
+		cQry += "AND " + cPfxContas + "_PREFIXO BETWEEN '"+ AllTrim(mv_par01)+"' AND '"+ AllTrim(mv_par02)+"' "
+	Endif
+	
+	If ( !(Empty(AllTrim(mv_par03))) .Or. !(Empty(AllTrim(mv_par04))) )
+		cQry += "AND " + cPfxContas + "_NUM BETWEEN '"+ AllTrim(mv_par03)+"' AND '"+ AllTrim(mv_par04)+"' "
+	Endif
+	
+	If ( !(Empty(AllTrim(mv_par05))) .Or. !(Empty(AllTrim(mv_par06))) )
+		cQry += "AND " + cPfxContas + "_PARCELA BETWEEN '"+ AllTrim(mv_par05)+"' AND '"+ AllTrim(mv_par06)+"' "
+	Endif
+	
+	If ( !(Empty(DtoS(mv_par07))) .Or. !(Empty(DtoS(mv_par08))) )
+		cQry += "AND " + cPfxContas + "_EMISSAO BETWEEN '"+ DtoS(mv_par07)+"' AND '"+ DtoS(mv_par08)+"' "
+	Endif
+	
+	If ( !(Empty(AllTrim(mv_par09))) .Or. !(Empty(AllTrim(mv_par10))) )
+		cQry += "AND " + cPfxContas + "_CLIENTE BETWEEN '"+ AllTrim(mv_par09)+"' AND '"+ AllTrim(mv_par10)+"' "
+	Endif
+	
+	cQry += "AND SE1.D_E_L_E_T_ = '' AND SA1.D_E_L_E_T_ = '' "
+	cQry += "ORDER BY " + cPfxContas + "_PREFIXO, " + cPfxContas + "_NUM, " + cPfxContas + "_PARCELA"
+	// ------------------------------
+	// Realiza a consulta
+	cAlias	:= getNextAlias()
+	
+	DbUseArea(.T.,"TOPCONN",TcGenQry(,,ChangeQuery(cQry)),cAlias,.T.,.T.)
+	
+	TCSetField(cAlias,cPfxContas+"_EMISSAO","D",8,0)
+	TCSetField(cAlias,cPfxContas+"_VENCREA","D",8,0)
+	
+	While !((cAlias)->(EOF()))/*nI<1*/
+		aAux	:= Array(24)
+		
+		aAux[1]	:= .T.
+		aAux[2] 	:= &(cAlias+"->"+cPfxContas+"_PREFIXO")
+		aAux[3] 	:= &(cAlias+"->"+cPfxContas+"_NUM")
+		aAux[4] 	:= &(cAlias+"->"+cPfxContas+"_PARCELA")
+		aAux[5] 	:= &(cAlias+"->"+cPfxContas+"_EMISSAO")
+		aAux[6] 	:= &(cAlias+"->"+cPfxContas+"_SALDO")
+		aAux[7] 	:= &(cAlias+"->"+cPfxContas+"_VENCREA")
+		aAux[8] 	:= &(cAlias+"->"+cPfxContas+"_FATURA")
+		aAux[9] 	:= &(cAlias+"->"+cPfxContas+"_HIST")
+		aAux[10]	:= &(cAlias+"->"+cPfxContas+"_XCODBAR")
+		aAux[11] 	:= &(cAlias+"->"+cPfxCli+"_DESC")
+		aAux[12] 	:= &(cAlias+"->"+cPfxCli+"_NREDUZ")
+		aAux[13] 	:= &(cAlias+"->"+cPfxCli+"_CGC")
+		aAux[14] 	:= &(cAlias+"->"+cPfxCli+"_PESSOA")
+		aAux[15] 	:= &(cAlias+"->"+cPfxCli+"_END")
+		aAux[16] 	:= &(cAlias+"->"+cPfxCli+"_EST")
+		aAux[17] 	:= &(cAlias+"->"+cPfxCli+"_MUN")
+		aAux[18] 	:= &(cAlias+"->"+cPfxCli+"_BAIRRO")
+		aAux[19] 	:= &(cAlias+"->"+cPfxCli+"_CEP")
+		aAux[20]	:= &(cAlias+"->"+cPfxCli+"_INSCR")
+		aAux[21] 	:= &(cAlias+"->"+cPfxContas+"_BCOCLI")
+		aAux[22] 	:= &(cAlias+"->"+cPfxContas+"_AGECLI")
+		aAux[23] 	:= &(cAlias+"->"+cPfxContas+"_CTACLI")
+		aAux[24] 	:= &(cAlias+"->"+cPfxContas+"_MOEDA")
+		
+		(cAlias)->(DbSkip())
+		
+		AADD(aRet, aAux)
+		nI += 1
+	EndDo
+	
+	(cAlias)->(DbCloseArea())
+Return aRet
+
+Static Function fMontaTela()
+	Local aSize,aPosObj
+	Local nPosLin := 2
+	Local oBrowse
+	Local oOK := LoadBitmap(GetResources(),'LBOK')
+	Local oNO := LoadBitmap(GetResources(),'LBNO')
+	Local oButRelat, oButFechar, oGridTxt
+	Private oDlg
+	
+	PosObjetos(@aSize,@aPosObj)
+	
+	oDlg := MSDialog():New(aSize[7],aSize[1],aSize[6],aSize[5],'Impress?o de Fatura',,,,,CLR_BLACK,CLR_WHITE,,,.T.)  // Ativa di?logo centralizado
+	
+	oGridTxt	:= TSay():New(10,aPosObj[1,2] ,{||"T?tulos filtrados:"},    oDlg, , , , ,,.T., CLR_BLACK,CLR_WHITE,200,20)
+	
+	nPosLin := aPosObj[1,3]+200
+	oBrowse := TWBrowse():New(20,aPosObj[1,2],aPosObj[1,4],;
+		nPosLin,,{"","Prefixo","N?mero","Parcela",;
+		"Emiss?o","Valor","Vencimento", "Cliente", "CPF/CNPJ"};
+		,,oDlg,,,,/*{||TabCob()}*/,,,,,,,,,,.t.,,,,,)
+		
+	oBrowse:SetArray(aDados)
+	
+	oBrowse:bLine := {||{;
+		If(aDados[oBrowse:nAt,01],oOK,oNO),;
+		aDados[oBrowse:nAt,02],;
+		aDados[oBrowse:nAt,03],;
+		aDados[oBrowse:nAt,04],;
+		aDados[oBrowse:nAt,05],;
+		aDados[oBrowse:nAt,06],;
+		aDados[oBrowse:nAt,07],;
+		aDados[oBrowse:nAt,12],;
+		aDados[oBrowse:nAt,13] } }
+	
+	oBrowse:bLDblClick := {|| aDados[oBrowse:nAt][1] :=	!aDados[oBrowse:nAt][1],oBrowse:DrawSelect()}
+	
+	oButRelat  := TButton():New(nPosLin+30,aPosObj[1,2], "Gerar Relat?rio",oDlg,{||fGeraRelat()},40,10,,,.F.,.T.,.F.,,.F.,,,.F.)
+	oButFechar := TButton():New(nPosLin+30,aPosObj[1,2]+50, "Fechar",oDlg,{||fFechar()},40,10,,,.F.,.T.,.F.,,.F.,,,.F.)
+	
+	oDlg:Activate(,,,.T.,,,)
+Return
+
+Static Function PosObjetos(aSize,aPosObj)
+	Local aInfo
+	Local aObjects := {}
+
+	aSize := MsAdvSize()
+	aAdd(aObjects,{100,060,.T.,.F.})
+	aAdd(aObjects,{100,100,.T.,.T.})
+
+	aInfo   := {aSize[1],aSize[2],aSize[3],aSize[4],3,3}
+	aPosObj := MsObjSize(aInfo,aObjects)
+Return
+
+Static Function fGeraRelat()
+	If !(fIsAllFalse())
+		U_PCFINR05(aDados)
+	Else
+		Aviso("Imposs?vel gerar relat?rio.", "N?o h? dados selecionados para gerar o relat?rio.", {"OK"}, 1)
+	Endif
+Return
+
+Static Function fIsAllFalse()
+	Local nL
+	Local nTam := Len(aDados)
+	
+	For nL := 1 To nTam
+		If (aDados[nL][1] == .T.)
+			Return .F.
+		Endif
+	Next nL
+Return .T.
+
+Static Function fFechar()
+	If Aviso("Confirma??o", "Encerrar sess?o?", {"Sim", "N?o"}, 1) == 1
+		oDlg:End()
+	Endif
+Return

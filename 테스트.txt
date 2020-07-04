@@ -1,0 +1,9 @@
+CREATE VIEW kximkowjfcbikximklo9g1vocdttfctsfcbitvmwklo9udhrtvmwklo9 AS 
+SELECT 
+D2_FILIAL AS hvnvcdttfcbiyvhyhvnvrehlhvnvfctsrehl,    
+D2_CLIENTE AS hvnvcdttfcbiumtzrehlhvnvklo9g1votvmwklo9,    
+D2_QUANT AS sboutvmwcdttklo9fcbikximklo9g1vocdttfcts,    
+D2_PRCVEN AS iphwndlgklo9umtzjtv1fcbikximklo9g1vocdttfcts 
+FROM SD2010 
+WHERE 
+D_E_L_E_T_ = xxxxxxxxhxdq 
